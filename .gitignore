@@ -1,0 +1,24 @@
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+.aws/
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies and generated output (for future development)
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# Local operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
