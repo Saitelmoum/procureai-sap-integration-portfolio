@@ -1,0 +1,12 @@
+{
+  "name": "procureai-fiori",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal ProcureAI SAPUI5 freestyle frontend",
+  "scripts": {
+    "start": "UI5_DATA_DIR=.ui5 ui5 serve --port 8080"
+  },
+  "devDependencies": {
+    "@ui5/cli": "^4.0.70"
+  }
+}

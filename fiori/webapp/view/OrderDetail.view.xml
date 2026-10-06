@@ -1,0 +1,52 @@
+<mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+  controllerName="procureai.controller.OrderDetail" displayBlock="true">
+  <Page id="detailPage" title="Order Details" showNavButton="true" navButtonPress=".onBack">
+    <content>
+      <VBox class="sapUiResponsiveContentPadding sapUiSmallMarginTop">
+        <Text text="Loading order..." visible="{view>/busy}" />
+        <MessageStrip type="Error" showIcon="true" text="{view>/error}"
+          visible="{= !!${view>/error} }" />
+        <MessageStrip type="Warning" showIcon="true" text="{detail>/message}"
+          visible="{= !!${detail>/message} }" />
+              <FlexBox id="detailFields" wrap="Wrap" visible="{= !!${selectedOrder>/orderId} }">
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Order ID" labelFor="detailOrderId" />
+                  <Text id="detailOrderId" text="{selectedOrder>/orderId}" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Supplier" labelFor="detailSupplier" />
+                  <Text id="detailSupplier" text="{selectedOrder>/supplierName}" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Country" labelFor="detailCountry" />
+                  <Text id="detailCountry" text="{selectedOrder>/supplierCountry}" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="VAT number" labelFor="detailVat" />
+                  <Text id="detailVat" text="{= ${selectedOrder>/vatNumber} || 'Not provided' }" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Original Amount" labelFor="detailOriginalAmount" />
+                  <Text id="detailOriginalAmount" text="{selectedOrder>/originalAmount}" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Currency" labelFor="detailCurrency" />
+                  <Text id="detailCurrency" text="{selectedOrder>/currency}" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Amount EUR" labelFor="detailAmountEUR" />
+                  <Text id="detailAmountEUR" text="{= ${selectedOrder>/amountEUR} === null ? '—' : ${selectedOrder>/amountEUR} }" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Decision" labelFor="detailDecision" />
+                  <Text id="detailDecision" text="{= ${selectedOrder>/decision} === null ? 'Not evaluated' : ${selectedOrder>/decision} }" />
+                </VBox>
+                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                  <Label text="Status" labelFor="detailStatus" />
+                  <Text id="detailStatus" text="{selectedOrder>/status}" />
+                </VBox>
+              </FlexBox>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

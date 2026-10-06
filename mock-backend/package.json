@@ -1,0 +1,18 @@
+{
+  "name": "procureai-mock-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mock procurement API using synthetic in-memory orders",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "fastify": "^5.12.5"
+  }
+}

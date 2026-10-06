@@ -1,0 +1,73 @@
+{
+  "_version": "1.65.0",
+  "sap.app": {
+    "id": "procureai",
+    "type": "application",
+    "applicationVersion": {
+      "version": "0.1.0"
+    },
+    "title": "ProcureAI",
+    "description": "Procurement Control Tower"
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.ui.core": {},
+        "sap.m": {}
+      }
+    },
+    "rootView": {
+      "viewName": "procureai.view.App",
+      "type": "XML",
+      "id": "appView",
+      "async": true
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "viewType": "XML",
+        "viewPath": "procureai.view",
+        "controlId": "app",
+        "controlAggregation": "pages",
+        "async": true
+      },
+      "routes": [
+        {
+          "pattern": "",
+          "name": "orders",
+          "target": "orders"
+        },
+        {
+          "pattern": "orders/{orderId}",
+          "name": "orderDetail",
+          "target": "orderDetail"
+        }
+      ],
+      "targets": {
+        "orders": {
+          "viewName": "Orders",
+          "viewId": "orders",
+          "viewLevel": 1
+        },
+        "orderDetail": {
+          "viewName": "OrderDetail",
+          "viewId": "orderDetail",
+          "viewLevel": 2
+        }
+      }
+    }
+  }
+}

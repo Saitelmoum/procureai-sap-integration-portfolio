@@ -1,0 +1,53 @@
+<mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+  controllerName="procureai.controller.Orders" displayBlock="true">
+    <Page id="landingPage" title="ProcureAI">
+      <content>
+        <VBox id="welcome" class="sapUiResponsiveContentPadding sapUiSmallMarginTop">
+          <Title id="subtitle" text="Procurement Control Tower" level="H2" />
+          <MessageStrip id="loadError" type="Error" showIcon="true"
+            text="{view>/error}" visible="{= !!${view>/error} }"
+            class="sapUiSmallMarginTop" />
+          <Text id="loadingMessage" text="Loading orders..." visible="{view>/busy}"
+            class="sapUiSmallMarginTop" />
+          <Table id="ordersTable" items="{orders>/orders}" busy="{view>/busy}"
+            mode="SingleSelectLeft" includeItemInSelection="true" rememberSelections="false"
+            selectionChange=".onOrderSelectionChange" autoPopinMode="true"
+            busyIndicatorDelay="0" noDataText="No orders to display."
+            class="sapUiSmallMarginTop">
+            <headerToolbar>
+              <OverflowToolbar>
+                <Title text="Purchase Orders" level="H3" />
+                <ToolbarSpacer />
+                <Button id="refreshButton" text="Refresh" icon="sap-icon://refresh"
+                  press=".onRefresh" enabled="{= !${view>/busy} }" />
+              </OverflowToolbar>
+            </headerToolbar>
+            <columns>
+              <Column><Text text="Order ID" /></Column>
+              <Column><Text text="Supplier" /></Column>
+              <Column><Text text="Country" /></Column>
+              <Column hAlign="End"><Text text="Original Amount" /></Column>
+              <Column><Text text="Currency" /></Column>
+              <Column hAlign="End"><Text text="Amount EUR" /></Column>
+              <Column><Text text="Decision" /></Column>
+              <Column><Text text="Status" /></Column>
+            </columns>
+            <items>
+              <ColumnListItem>
+                <cells>
+                  <Text text="{orders>orderId}" />
+                  <Text text="{orders>supplierName}" />
+                  <Text text="{orders>supplierCountry}" />
+                  <Text text="{orders>originalAmount}" />
+                  <Text text="{orders>currency}" />
+                  <Text text="{= ${orders>amountEUR} === null ? '—' : ${orders>amountEUR} }" />
+                  <Text text="{= ${orders>decision} === null ? 'Not evaluated' : ${orders>decision} }" />
+                  <Text text="{orders>status}" />
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </VBox>
+      </content>
+    </Page>
+</mvc:View>
