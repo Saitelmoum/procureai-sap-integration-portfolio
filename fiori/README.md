@@ -1,98 +1,64 @@
-# SAPUI5/Fiori frontend
+# ProcureAI SAPUI5 frontend
 
-A minimal SAPUI5 freestyle ProcureAI Procurement Control Tower. It displays purchase orders from the local Fastify backend using standard SAPUI5 controls and the Horizon theme.
+Procurement control tower with order search/filtering, creation, routed details, and mock processing. Fiori calls only Fastify at `http://127.0.0.1:3000`; it never calls SAP Integration Suite or holds credentials.
 
-The frontend is read-only: there are no POST/PATCH actions, detail pages, routing, authentication, or custom CSS frameworks. Use synthetic/demo data only.
+## Run
 
-## Run locally
-
-Use Node.js 22 or newer and npm. From this folder on macOS/Linux:
+Use Node.js 22 or newer. From this directory:
 
 ```sh
 npm install
 npm start
 ```
 
-Open http://localhost:8080/index.html. Stop the server with Ctrl+C. Reload the browser after editing files.
+Open http://localhost:8080/. Start the backend separately from `../mock-backend`. UI5 Tooling serves SAPUI5 1.153.0; `.npmrc` and `UI5_DATA_DIR=.ui5` keep caches in this folder.
 
-The start script sets `UI5_DATA_DIR=.ui5`, so framework downloads stay inside this folder. `.npmrc` similarly keeps npm's cache in `.npm-cache/`. The first start needs internet access to download framework libraries; UI5 Tooling then serves them locally.
+## Routing and order details
 
-Run the existing mock backend separately on `http://127.0.0.1:3000`. Its CORS configuration must allow the frontend origin `http://localhost:8080`. The app loads orders automatically when opened; select **Refresh** to reload them or retry after a failure.
+A route matches the URL hash; a target loads a view into the root `sap.m.App`. The `orders` route (`""`) displays `Orders`. The `orderDetail` route (`orders/{orderId}`) displays `OrderDetail` at `#/orders/PO-1003`. Its pattern has no leading slash; UI5 creates the single leading hash slash.
 
-## Loading and binding orders
+`Orders.controller.js` selects an order with `navTo("orderDetail", { orderId })`. `OrderDetail.controller.js` listens to the route's `patternMatched` event, reads `event.getParameter("arguments").orderId`, and fetches that order directly. A dedicated `orderDetail` JSONModel stores the response, so bookmarks and browser refresh do not depend on the list model. A separate `detailState` model holds loading, processing, error, and reason state.
 
-`App.controller.js` creates a named `orders` JSONModel with `{ orders: [] }`. On initialization and Refresh, it fetches `http://127.0.0.1:3000/orders`, checks the HTTP result and JSON structure, then stores the full response using `ordersModel.setData(data)`.
+The detail page handles not found, network/server errors, retries, and timeouts. Null VAT displays `Not provided`; null EUR amount displays an em dash; null decision displays `Not evaluated`. **Process Order** is available only until a decision exists. It posts to Fastify, reloads the order and list after success, and displays the processing reason. Processing never advances lifecycle status.
 
-The table uses `items="{orders>/orders}"`: `orders` before `>` is the model name; `/orders` is the array inside the backend response. The XML contains one row template with relative cell bindings such as `{orders>orderId}` and `{orders>supplierName}`. SAPUI5 repeats that template for each object, without hardcoded rows.
+## List, search, and create
 
-A separate `view` JSONModel holds `busy` and `error`. While fetching, the page shows "Loading orders...", the table is busy, and Refresh is disabled. A request times out after 10 seconds. On failure, a MessageStrip identifies the backend URL and asks the user to retry. Old rows are cleared before each request so stale results do not look current. A successful retry clears the error. An empty array displays "No orders to display." Null EUR amounts display an em dash, and null decisions display "Not evaluated".
+The Orders page retains its title, subtitle, Refresh action, loading/error handling, and table. Search matches `orderId` or `supplierName`; Decision and Lifecycle filters combine with search. The visible-order count follows the active filters. Decision uses semantic `ObjectStatus` values: APPROVED is Success, MANUAL_REVIEW is Warning, REJECTED is Error, and Unprocessed is neutral. Lifecycle statuses remain plain text.
 
-Request flow: the controller sends GET → the browser applies CORS → Fastify reads its in-memory orders and returns `{ orders: [...] }` → the controller populates the JSONModel → SAPUI5 updates the bound table. No data is written to the backend.
+**Create Order** opens a dialog for ID, supplier, country, optional VAT, original amount, and currency. It posts only those fields to Fastify; amountEUR, decision, and status remain backend-owned. Success closes and clears the dialog, refreshes the list, and shows a success toast. Backend validation, duplicates, and network errors remain visible in the dialog.
 
-## Selecting an order
+## Files
 
-The table uses `mode="SingleSelectLeft"`, so only one row can be selected. Clicking a row or its radio button fires `selectionChange`, handled by `onOrderSelectionChange` in the controller.
-
-The handler reads `event.getParameter("listItem").getBindingContext("orders").getObject()` and copies the selected flat order into a separate JSONModel named `selectedOrder`. The original list stays in the `orders` model. No additional backend request is needed.
-
-The detail panel below the table binds to `selectedOrder>/orderId`, `/supplierName`, `/supplierCountry`, `/vatNumber`, `/originalAmount`, `/currency`, `/amountEUR`, `/decision`, and `/status` (each path uses the `selectedOrder>` model prefix). Missing VAT numbers show "Not provided"; null EUR amounts and decisions use the same placeholders as the table.
-
-Before selection, the panel shows "Select an order to view details." Refresh clears both table selection and the selected-order model before loading. Thus loading, errors, and refreshed data cannot leave stale details on screen. Select a row again after a successful refresh.
-
-The table automatically moves columns into pop-ins on narrow screens, and the detail fields wrap using standard `FlexBox` and `VBox` controls. Everything remains on the same page with no routing or dependencies added.
-
-A separate model keeps the selected data independent of the table's UI state. The details bind directly to that model rather than repeatedly asking the table which row is selected.
-
-## Files and responsibilities
-
-| File | Purpose |
+| File | Responsibility |
 | --- | --- |
-| `package.json` | Declares UI5 Tooling as a development dependency and starts the server on port 8080. |
-| `package-lock.json` | Locks npm dependency versions for repeatable installation. |
-| `ui5.yaml` | Configures this as an application and pins SAPUI5 1.153.0 and its libraries. |
-| `webapp/index.html` | Loads the local `resources/sap-ui-core.js` bootstrap, selects the theme, maps the `procureai` namespace to this folder, and starts ComponentSupport. |
-| `webapp/Component.js` | Defines the application component. UIComponent reads the manifest and creates the root view asynchronously. |
-| `webapp/manifest.json` | Describes the app ID, title, dependencies, supported devices, and root XML view. |
-| `webapp/view/App.view.xml` | Declares the screen using `App`, `Page`, `VBox`, `Title`, and `Text` controls. |
-| `webapp/controller/App.controller.js` | Initializes the JSONModels, fetches orders, handles selection and Refresh, and manages loading/error state. |
-| `.npmrc` | Keeps npm's cache local to `fiori/`. |
-| `.gitignore` | Excludes installed dependencies, local caches, and build output. |
-| `README.md` | Documents setup, structure, and verification. |
+| `webapp/manifest.json` | UI5 routes and view targets. |
+| `webapp/Component.js` | Shared orders data, loading, and refresh. |
+| `webapp/view/Orders.view.xml` and `controller/Orders.controller.js` | List, filters, creation, selection navigation. |
+| `webapp/view/OrderDetail.view.xml` and `controller/OrderDetail.controller.js` | Independent detail, processing action, loading/error/reason state. |
+| `test/order-detail.test.cjs` | Tests for routed detail request behavior. |
 
-The XML View describes what appears on screen; its Controller loads the data and handles Refresh. The Component owns the application, while the manifest holds its declarative configuration. `index.html` starts SAPUI5, which loads ComponentSupport, creates the component declared in the HTML, and renders the manifest's root view.
+## SAP Integration Suite preparation
 
-## Dependencies
+```text
+SAPUI5 Fiori -> Fastify -> integrationClient -> MOCK processor today
+                                              -> SAP Integration Suite over HTTPS later
+```
 
-The only direct npm development dependency is `@ui5/cli` 4.0.70. There are no npm runtime dependencies.
+Keep `INTEGRATION_MODE=mock` for local work. Setting `INTEGRATION_MODE=sap` tells Fastify’s integration client to request an OAuth client-credentials token over HTTPS using the client ID and secret, then send the normalized purchase-order payload to the HTTPS iFlow with the bearer token. The Fiori app never sees these values. Set the four SAP URL/client variables in a local `mock-backend/.env`, based on `.env.example`; `.env` is gitignored. SAP mode refuses missing configuration and non-HTTPS URLs. No real tenant URL or credentials are in this repository. VAT/VIES validation is not part of the mock flow.
 
-UI5 Tooling manages these framework libraries at version 1.153.0:
+Before SAP mode can be used, a tenant, Integration Suite iFlow endpoint, OAuth token URL, client ID, and client secret must be provisioned, and the iFlow request/response schema agreed. Never put the client secret in Fiori.
 
-- `sap.ui.core`: Component, XML View, Controller, and core runtime.
-- `sap.m`: Standard responsive controls.
-- `themelib_sap_horizon`: Horizon theme.
+## Verification — 2026-10-08
 
-It also resolves `sap.ui.layout` and `sap.ui.unified` transitively. SAPUI5 shares these libraries with OpenUI5, so their downloaded package names use `@openui5`; the configured framework is SAPUI5. Framework libraries belong in `ui5.yaml`, not `package.json`.
+Automated checks: all seven `node --test test/order-detail.test.cjs` tests and all nine backend `npm test` tests pass. Syntax and JSON/XML parsing checks pass.
 
-See the [official UI5 Tooling SAPUI5 guide](https://ui5.github.io/cli/stable/pages/SAPUI5/).
+Browser checks against the local backend:
 
-## Verification
+- Search by supplier and by order ID narrowed the list and updated the count. Combined search, decision, and lifecycle filters retained the matching single order; Unprocessed returned 0 after all test orders had been processed.
+- Created synthetic EUR and USD orders from the dialog; the backend initialized both as Unprocessed/CREATED and the list refreshed. The dialog showed a duplicate-ID 409 message and a supplier-country validation 400 message.
+- Processed PO-2001 (EUR 5000): amountEUR became 5000, decision APPROVED, reason appeared, status remained CREATED, and list refresh reflected the result.
+- Processed PO-2003 (USD 12000): amountEUR became 10648.68, decision MANUAL_REVIEW, and status remained CREATED.
+- Processed PO-2002 (USD 10): amountEUR became 8.87 and decision APPROVED. The Fiori detail refreshed and returning to the list showed the new result.
+- PO-9999 returns an actual backend 404 and the detail displays “Order not found.” SAP mode without configuration returns 503 with the missing variable names.
 
-Latest order-detail browser checks:
-
-- Before selection: "Select an order to view details." was visible.
-- Selected PO-1001: all nine fields matched its data, including VAT `DE-DEMO-001`, EUR amount `1250`, decision `APPROVED`, and status `CONFIRMED`.
-- Selected PO-1003: PO-1001 was deselected and details changed to Demo Thames Workshop Tools, GB, `GB-DEMO-003`, `2500 GBP`, `2925 EUR`, `MANUAL_REVIEW`, `CREATED`.
-- Refreshed while the backend was temporarily paused: selection/details cleared, loading text and busy indicator appeared, and Refresh was disabled.
-- After the 10-second timeout: the error message ended in "signal timed out", Refresh was enabled, and no stale details were shown.
-- Resumed the backend and selected Refresh: all five seed orders returned, the error cleared, and the selection hint remained until a row was selected.
-- Clicked the PO-1005 row: its details appeared, with "Not provided" for its null VAT number.
-
-Earlier connection/setup checks:
-
-- UI5 server started successfully at http://localhost:8080 using SAPUI5 1.153.0.
-- Opened the app in Brave and verified the title, subtitle, eight columns, and all six orders initially present in backend memory (PO-1001–PO-1005 and PO-3001).
-- Stopped the backend and selected Refresh: the table cleared and the visible error read "Could not load orders. Check that the mock backend is running at http://127.0.0.1:3000, then select Refresh. Failed to fetch".
-- Restarted the backend and selected Refresh: the error disappeared and the five seed orders loaded. The previous sixth order was in-memory test data, so restarting discarded it as expected.
-- Briefly paused the backend to verify "Loading orders...", a busy indicator, and disabled Refresh while a request was pending; then resumed it.
-- Browser console showed no application startup errors. An installed browser extension emitted an unrelated error and warning from `chrome-extension://` URLs.
-- npm reported 14 development-tool dependency vulnerabilities (3 moderate, 11 high). A compatible `npm audit fix` did not resolve them; no forced downgrade or dependency overrides were applied.
+Processing test orders were synthetic and in-memory; the backend was restarted after testing so only the five seed orders remain. The browser console check from the routing work showed no application exception; extension errors and transient UI5 warnings were unrelated to application code.

@@ -1,51 +1,93 @@
 <mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
   controllerName="procureai.controller.OrderDetail" displayBlock="true">
-  <Page id="detailPage" title="Order Details" showNavButton="true" navButtonPress=".onBack">
+  <Page id="detailPage" title="ProcureAI" showNavButton="true" navButtonPress=".onBack">
     <content>
       <VBox class="sapUiResponsiveContentPadding sapUiSmallMarginTop">
-        <Text text="Loading order..." visible="{view>/busy}" />
-        <MessageStrip type="Error" showIcon="true" text="{view>/error}"
-          visible="{= !!${view>/error} }" />
-        <MessageStrip type="Warning" showIcon="true" text="{detail>/message}"
-          visible="{= !!${detail>/message} }" />
-              <FlexBox id="detailFields" wrap="Wrap" visible="{= !!${selectedOrder>/orderId} }">
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Order ID" labelFor="detailOrderId" />
-                  <Text id="detailOrderId" text="{selectedOrder>/orderId}" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Supplier" labelFor="detailSupplier" />
-                  <Text id="detailSupplier" text="{selectedOrder>/supplierName}" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Country" labelFor="detailCountry" />
-                  <Text id="detailCountry" text="{selectedOrder>/supplierCountry}" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="VAT number" labelFor="detailVat" />
-                  <Text id="detailVat" text="{= ${selectedOrder>/vatNumber} || 'Not provided' }" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Original Amount" labelFor="detailOriginalAmount" />
-                  <Text id="detailOriginalAmount" text="{selectedOrder>/originalAmount}" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Currency" labelFor="detailCurrency" />
-                  <Text id="detailCurrency" text="{selectedOrder>/currency}" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Amount EUR" labelFor="detailAmountEUR" />
-                  <Text id="detailAmountEUR" text="{= ${selectedOrder>/amountEUR} === null ? '—' : ${selectedOrder>/amountEUR} }" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Decision" labelFor="detailDecision" />
-                  <Text id="detailDecision" text="{= ${selectedOrder>/decision} === null ? 'Not evaluated' : ${selectedOrder>/decision} }" />
-                </VBox>
-                <VBox width="16rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
-                  <Label text="Status" labelFor="detailStatus" />
-                  <Text id="detailStatus" text="{selectedOrder>/status}" />
-                </VBox>
-              </FlexBox>
+        <BusyIndicator visible="{detailState>/busy}" />
+        <Text text="Loading order..." visible="{detailState>/busy}"
+          class="sapUiSmallMarginBottom" />
+        <MessageStrip type="Error" showIcon="true" text="{detailState>/error}"
+          visible="{= !!${detailState>/error} }" />
+        <MessageStrip type="Warning" showIcon="true" text="{detailState>/message}"
+          visible="{= !!${detailState>/message} }" />
+        <Button text="Retry" icon="sap-icon://refresh" press=".onRetry"
+          visible="{= !!${detailState>/error} || !!${detailState>/message} }"
+          enabled="{= !${detailState>/busy} }" class="sapUiSmallMarginTop" />
+
+        <ObjectHeader id="orderHeader" title="{orderDetail>/orderId}"
+          intro="Purchase Order" responsive="true"
+          visible="{= !!${orderDetail>/orderId} }" class="sapUiSmallMarginBottom">
+          <statuses>
+            <ObjectStatus title="Decision"
+              text="{= ${orderDetail>/decision} ? ${orderDetail>/decision} : 'Not processed' }"
+              state="{= ${orderDetail>/decision} === 'APPROVED' ? 'Success' : ${orderDetail>/decision} === 'MANUAL_REVIEW' ? 'Warning' : ${orderDetail>/decision} === 'REJECTED' ? 'Error' : 'None' }" />
+            <ObjectStatus title="Status" text="{orderDetail>/status}" state="None" />
+          </statuses>
+        </ObjectHeader>
+
+        <Panel headerText="Supplier Information" expandable="false"
+          visible="{= !!${orderDetail>/orderId} }" class="sapUiSmallMarginBottom">
+          <content>
+            <FlexBox wrap="Wrap">
+              <VBox width="17rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                <Label text="Supplier" labelFor="detailSupplier" />
+                <Text id="detailSupplier" text="{orderDetail>/supplierName}" />
+              </VBox>
+              <VBox width="17rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                <Label text="Country" labelFor="detailCountry" />
+                <Text id="detailCountry" text="{orderDetail>/supplierCountry}" />
+              </VBox>
+              <VBox width="17rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                <Label text="VAT Number" labelFor="detailVat" />
+                <Text id="detailVat" text="{= ${orderDetail>/vatNumber} || 'Not provided' }" />
+              </VBox>
+            </FlexBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Financial Information" expandable="false"
+          visible="{= !!${orderDetail>/orderId} }" class="sapUiSmallMarginBottom">
+          <content>
+            <FlexBox wrap="Wrap">
+              <VBox width="17rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                <Label text="Original Amount" labelFor="detailOriginalAmount" />
+                <HBox alignItems="Center">
+                  <Text id="detailOriginalAmount" text="{path: 'orderDetail>/originalAmount', formatter: '.formatAmount'}" />
+                  <Text text="{orderDetail>/currency}" class="sapUiTinyMarginBegin" />
+                </HBox>
+              </VBox>
+              <VBox width="17rem" class="sapUiSmallMarginEnd sapUiSmallMarginBottom">
+                <Label text="Amount EUR" labelFor="detailAmountEUR" />
+                <Text id="detailAmountEUR" text="{path: 'orderDetail>/amountEUR', formatter: '.formatAmount'}" />
+              </VBox>
+            </FlexBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Processing Information" expandable="false"
+          visible="{= !!${orderDetail>/orderId} }" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox>
+              <Label text="Decision" labelFor="detailDecision" />
+              <ObjectStatus id="detailDecision"
+                text="{= ${orderDetail>/decision} ? ${orderDetail>/decision} : 'Not processed' }"
+                state="{= ${orderDetail>/decision} === 'APPROVED' ? 'Success' : ${orderDetail>/decision} === 'MANUAL_REVIEW' ? 'Warning' : ${orderDetail>/decision} === 'REJECTED' ? 'Error' : 'None' }" />
+              <MessageStrip type="{= ${orderDetail>/decision} === 'MANUAL_REVIEW' ? 'Warning' : 'Information' }"
+                showIcon="true"
+                text="{= ${detailState>/reason} || (${orderDetail>/decision} === 'MANUAL_REVIEW' ? 'This order needs human attention before it can be approved.' : (${orderDetail>/decision} === 'REJECTED' ? 'This order was rejected during processing.' : '')) }"
+                visible="{= !!${detailState>/reason} || ${orderDetail>/decision} === 'MANUAL_REVIEW' || ${orderDetail>/decision} === 'REJECTED' }"
+                class="sapUiSmallMarginTop" />
+              <Text text="Processing may call an external integration service."
+                visible="{= ${orderDetail>/decision} === null }"
+                class="sapUiSmallMarginTop sapUiTinyMarginBottom" />
+              <Button text="{= ${detailState>/processing} ? 'Processing...' : 'Process Order' }"
+                icon="sap-icon://process" type="Emphasized" press=".onProcessOrder"
+                visible="{= ${orderDetail>/decision} === null }"
+                enabled="{= !${detailState>/processing} &amp;&amp; !${detailState>/busy} }"
+                tooltip="Evaluate this purchase order" class="sapUiSmallMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
       </VBox>
     </content>
   </Page>

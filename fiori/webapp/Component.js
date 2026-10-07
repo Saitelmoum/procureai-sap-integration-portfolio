@@ -13,7 +13,9 @@ sap.ui.define([
     init: function () {
       UIComponent.prototype.init.apply(this, arguments);
       this.setModel(new JSONModel({ orders: [] }), "orders");
-      this.setModel(new JSONModel({ busy: false, error: "" }), "view");
+      this.setModel(new JSONModel({ busy: false, error: "", summary: {
+        total: 0, approved: 0, manualReview: 0, rejected: 0, unprocessed: 0
+      } }), "view");
       this.getRouter().initialize();
     },
 
@@ -33,7 +35,8 @@ sap.ui.define([
 
     _fetchOrders: async function () {
       const viewModel = this.getModel("view");
-      viewModel.setData({ busy: true, error: "" });
+      viewModel.setProperty("/busy", true);
+      viewModel.setProperty("/error", "");
       this.getModel("orders").setData({ orders: [] });
       this._loaded = false;
 
@@ -51,9 +54,12 @@ sap.ui.define([
         this.getModel("orders").setData(data);
         this._loaded = true;
       } catch (error) {
-        viewModel.setProperty("/error",
-          "Could not load orders. Check that the mock backend is running at " +
-          "http://127.0.0.1:3000, then return to the list and select Refresh. " + error.message);
+        const reason = error.name === "AbortError" || error.name === "TimeoutError"
+          ? "The request took too long."
+          : (error instanceof TypeError
+            ? "The backend could not be reached. Check that it is running."
+            : error.message);
+        viewModel.setProperty("/error", "Could not load orders. " + reason + " Select Refresh to try again.");
       } finally {
         viewModel.setProperty("/busy", false);
       }

@@ -1,53 +1,156 @@
-<mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+<mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core"
   controllerName="procureai.controller.Orders" displayBlock="true">
-    <Page id="landingPage" title="ProcureAI">
-      <content>
-        <VBox id="welcome" class="sapUiResponsiveContentPadding sapUiSmallMarginTop">
-          <Title id="subtitle" text="Procurement Control Tower" level="H2" />
-          <MessageStrip id="loadError" type="Error" showIcon="true"
-            text="{view>/error}" visible="{= !!${view>/error} }"
-            class="sapUiSmallMarginTop" />
-          <Text id="loadingMessage" text="Loading orders..." visible="{view>/busy}"
-            class="sapUiSmallMarginTop" />
-          <Table id="ordersTable" items="{orders>/orders}" busy="{view>/busy}"
-            mode="SingleSelectLeft" includeItemInSelection="true" rememberSelections="false"
-            selectionChange=".onOrderSelectionChange" autoPopinMode="true"
-            busyIndicatorDelay="0" noDataText="No orders to display."
-            class="sapUiSmallMarginTop">
-            <headerToolbar>
-              <OverflowToolbar>
-                <Title text="Purchase Orders" level="H3" />
-                <ToolbarSpacer />
-                <Button id="refreshButton" text="Refresh" icon="sap-icon://refresh"
-                  press=".onRefresh" enabled="{= !${view>/busy} }" />
-              </OverflowToolbar>
-            </headerToolbar>
-            <columns>
-              <Column><Text text="Order ID" /></Column>
-              <Column><Text text="Supplier" /></Column>
-              <Column><Text text="Country" /></Column>
-              <Column hAlign="End"><Text text="Original Amount" /></Column>
-              <Column><Text text="Currency" /></Column>
-              <Column hAlign="End"><Text text="Amount EUR" /></Column>
-              <Column><Text text="Decision" /></Column>
-              <Column><Text text="Status" /></Column>
-            </columns>
+  <Page id="landingPage" title="ProcureAI">
+    <content>
+      <VBox id="welcome" class="sapUiResponsiveContentPadding sapUiSmallMarginTop">
+        <Title id="subtitle" text="Procurement Control Tower" level="H1" />
+        <Text text="Monitor, process and review purchase orders"
+          class="sapUiTinyMarginTop sapUiSmallMarginBottom" />
+        <MessageStrip id="loadError" type="Error" showIcon="true"
+          text="{view>/error}" visible="{= !!${view>/error} }"
+          class="sapUiSmallMarginTop" />
+        <Text id="loadingMessage" text="Loading orders..." visible="{view>/busy}"
+          class="sapUiSmallMarginTop" />
+        <FlexBox id="orderSummary" wrap="Wrap" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+          <VBox width="9rem" class="sapUiTinyMarginEnd sapUiSmallMarginBottom">
+            <ObjectNumber number="{view>/summary/total}" />
+            <Label text="Total Orders" />
+          </VBox>
+          <VBox width="9rem" class="sapUiTinyMarginEnd sapUiSmallMarginBottom">
+            <ObjectNumber number="{view>/summary/approved}" state="Success" />
+            <Label text="Approved" />
+          </VBox>
+          <VBox width="9rem" class="sapUiTinyMarginEnd sapUiSmallMarginBottom">
+            <ObjectNumber number="{view>/summary/manualReview}" state="Warning" />
+            <Label text="Manual Review" />
+          </VBox>
+          <VBox width="9rem" class="sapUiTinyMarginEnd sapUiSmallMarginBottom">
+            <ObjectNumber number="{view>/summary/rejected}" state="Error" />
+            <Label text="Rejected" />
+          </VBox>
+          <VBox width="9rem" class="sapUiTinyMarginEnd sapUiSmallMarginBottom">
+            <ObjectNumber number="{view>/summary/unprocessed}" />
+            <Label text="Unprocessed" />
+          </VBox>
+        </FlexBox>
+        <SearchField id="orderSearch" width="100%"
+          placeholder="Search by order ID or supplier" liveChange=".onSearch"
+          value="{view>/search}" class="sapUiSmallMarginTop" />
+        <HBox wrap="Wrap" alignItems="Center">
+          <Label text="Decision" labelFor="decisionFilter" class="sapUiSmallMarginEnd" />
+          <Select id="decisionFilter" selectedKey="" change=".onFiltersChange" class="sapUiSmallMarginEnd">
             <items>
-              <ColumnListItem>
-                <cells>
-                  <Text text="{orders>orderId}" />
-                  <Text text="{orders>supplierName}" />
-                  <Text text="{orders>supplierCountry}" />
-                  <Text text="{orders>originalAmount}" />
-                  <Text text="{orders>currency}" />
-                  <Text text="{= ${orders>amountEUR} === null ? '—' : ${orders>amountEUR} }" />
-                  <Text text="{= ${orders>decision} === null ? 'Not evaluated' : ${orders>decision} }" />
-                  <Text text="{orders>status}" />
-                </cells>
-              </ColumnListItem>
+              <core:Item key="" text="All decisions" />
+              <core:Item key="APPROVED" text="APPROVED" />
+              <core:Item key="MANUAL_REVIEW" text="MANUAL_REVIEW" />
+              <core:Item key="REJECTED" text="REJECTED" />
+              <core:Item key="UNPROCESSED" text="Not processed" />
             </items>
-          </Table>
-        </VBox>
-      </content>
-    </Page>
+          </Select>
+          <Label text="Lifecycle" labelFor="statusFilter" class="sapUiSmallMarginEnd" />
+          <Select id="statusFilter" selectedKey="" change=".onFiltersChange">
+            <items>
+              <core:Item key="" text="All statuses" />
+              <core:Item key="CREATED" text="CREATED" />
+              <core:Item key="CONFIRMED" text="CONFIRMED" />
+              <core:Item key="SHIPPED" text="SHIPPED" />
+              <core:Item key="DELIVERED" text="DELIVERED" />
+              <core:Item key="CANCELLED" text="CANCELLED" />
+            </items>
+          </Select>
+        </HBox>
+        <Table id="ordersTable" items="{orders>/orders}" busy="{view>/busy}"
+          mode="SingleSelectLeft" includeItemInSelection="true" rememberSelections="false"
+          selectionChange=".onOrderSelectionChange" autoPopinMode="true"
+          busyIndicatorDelay="0"
+          noDataText="{= ${view>/search} || ${view>/decisionFilter} || ${view>/statusFilter} ? 'No orders match your filters.' : 'No orders available.' }"
+          class="sapUiSmallMarginTop">
+          <headerToolbar>
+            <OverflowToolbar>
+              <Title text="Purchase Orders" level="H3" />
+              <Text text="Showing {view>/visibleCount} of {view>/summary/total} orders" class="sapUiSmallMarginBegin" />
+              <ToolbarSpacer />
+              <Button id="createOrderButton" text="Create Order" icon="sap-icon://add"
+                press=".onOpenCreateOrder" />
+              <Button id="refreshButton" text="Refresh" icon="sap-icon://refresh"
+                press=".onRefresh" enabled="{= !${view>/busy} }" />
+            </OverflowToolbar>
+          </headerToolbar>
+          <columns>
+            <Column><Text text="Order ID" /></Column>
+            <Column><Text text="Supplier" /></Column>
+            <Column><Text text="Country" /></Column>
+            <Column hAlign="End"><Text text="Original Amount" /></Column>
+            <Column><Text text="Currency" /></Column>
+            <Column hAlign="End"><Text text="Amount EUR" /></Column>
+            <Column><Text text="Decision" /></Column>
+            <Column><Text text="Status" /></Column>
+          </columns>
+          <items>
+            <ColumnListItem>
+              <cells>
+                <Text text="{orders>orderId}" />
+                <Text text="{orders>supplierName}" />
+                <Text text="{orders>supplierCountry}" />
+                <Text text="{path: 'orders>originalAmount', formatter: '.formatAmount'}" />
+                <Text text="{orders>currency}" />
+                <Text text="{path: 'orders>amountEUR', formatter: '.formatAmount'}" />
+                <ObjectStatus
+                  text="{= ${orders>decision} ? ${orders>decision} : 'Not processed' }"
+                  state="{= ${orders>decision} === 'APPROVED' ? 'Success' : ${orders>decision} === 'MANUAL_REVIEW' ? 'Warning' : ${orders>decision} === 'REJECTED' ? 'Error' : 'None' }" />
+                <ObjectStatus text="{orders>status}" state="None" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+      </VBox>
+    </content>
+    <dependents>
+      <Dialog id="createOrderDialog" title="Create Order" busy="{view>/createBusy}"
+        contentWidth="32rem" draggable="true" resizable="true">
+        <content>
+          <VBox class="sapUiResponsiveContentPadding">
+            <MessageStrip type="Error" showIcon="true" text="{view>/createError}"
+              visible="{= !!${view>/createError} }" class="sapUiSmallMarginBottom" />
+            <Panel headerText="Purchase Order" backgroundDesign="Transparent">
+              <content>
+                <VBox>
+                  <Label text="Order ID" required="true" labelFor="createOrderId" />
+                  <Input id="createOrderId" value="{createOrder>/orderId}" placeholder="For example, PO-1006" />
+                </VBox>
+              </content>
+            </Panel>
+            <Panel headerText="Supplier" backgroundDesign="Transparent" class="sapUiSmallMarginTop">
+              <content>
+                <VBox>
+                  <Label text="Supplier Name" required="true" labelFor="createSupplierName" />
+                  <Input id="createSupplierName" value="{createOrder>/supplierName}" />
+                  <Label text="Supplier Country (2-letter code)" required="true" labelFor="createSupplierCountry" />
+                  <Input id="createSupplierCountry" value="{createOrder>/supplierCountry}" maxLength="2" />
+                  <Label text="VAT Number (optional)" labelFor="createVatNumber" />
+                  <Input id="createVatNumber" value="{createOrder>/vatNumber}" />
+                </VBox>
+              </content>
+            </Panel>
+            <Panel headerText="Financial Information" backgroundDesign="Transparent" class="sapUiSmallMarginTop">
+              <content>
+                <VBox>
+                  <Label text="Original Amount" required="true" labelFor="createAmount" />
+                  <Input id="createAmount" value="{createOrder>/originalAmount}" type="Number" />
+                  <Label text="Currency (3-letter code)" required="true" labelFor="createCurrency" />
+                  <Input id="createCurrency" value="{createOrder>/currency}" maxLength="3" />
+                </VBox>
+              </content>
+            </Panel>
+          </VBox>
+        </content>
+        <beginButton>
+          <Button text="Create" type="Emphasized" press=".onCreateOrder" enabled="{= !${view>/createBusy} }" />
+        </beginButton>
+        <endButton>
+          <Button text="Cancel" press=".onCancelCreateOrder" enabled="{= !${view>/createBusy} }" />
+        </endButton>
+      </Dialog>
+    </dependents>
+  </Page>
 </mvc:View>
