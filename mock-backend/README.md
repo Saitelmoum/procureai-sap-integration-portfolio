@@ -1,6 +1,6 @@
 # Mock backend
 
-A small Node.js + Fastify API for ProcureAI. It starts with five synthetic purchase orders in memory and supports reading orders, creating orders, recording processing results, and updating lifecycle status. There is no database, authentication, or external API access.
+A small Node.js + Fastify API for ProcureAI. It starts with five synthetic purchase orders in memory and supports reading, creating, processing, and lifecycle updates. There is no database or Fiori-to-Fastify authentication. SAP-mode service calls use OAuth when configured. Processing is routed through `integrationClient.js`; local development defaults to a synthetic mock processor.
 
 ## Run locally
 
@@ -53,6 +53,7 @@ curl -i -X OPTIONS http://127.0.0.1:3000/orders \
 | `GET /health` | HTTP 200 with `{ "status": "ok" }`. |
 | `GET /orders` | HTTP 200 with an `orders` array containing all current orders. |
 | `POST /orders` | HTTP 201 with the new `order`, HTTP 400 for invalid input, or HTTP 409 for a duplicate ID. |
+| `POST /orders/:orderId/process` | Runs the configured processor, stores `amountEUR` and `decision`, returns `{ order, reason }`; 404 unknown order, 503 missing SAP configuration, 502 processor failure. Status is unchanged. |
 | `PATCH /orders/:orderId/result` | HTTP 200 with the updated `order`, HTTP 400 for invalid input, or HTTP 404 for an unknown order. |
 | `PATCH /orders/:orderId/status` | HTTP 200 with the updated `order`, HTTP 400 for invalid input, HTTP 404 for an unknown order, or HTTP 409 for a blocked transition. |
 | `GET /orders/PO-1001` | HTTP 200 with an `order` object. |
@@ -90,7 +91,7 @@ Invalid input and duplicate IDs return clear JSON errors without adding an order
 
 ### Record a processing result
 
-`PATCH /orders/:orderId/result` represents a result supplied by the ProcureAI decision engine / SAP Integration Suite. This mock endpoint stores the supplied result; it does not run an engine or call an external service.
+`PATCH /orders/:orderId/result` records an externally supplied result. The new `POST /orders/:orderId/process` route calls the configured integration client and records its result.
 
 Send a JSON object containing both fields:
 
@@ -133,7 +134,10 @@ These rules apply to `/status`. The `/result` endpoint still records supplied re
 
 ## Files
 
-- `server.js`: Creates Fastify, defines the GET, POST, result PATCH, and status PATCH routes, validates writes, and starts the local server.
+- `server.js`: Creates Fastify, defines routes, validates writes, and starts the local server.
+- `integrationClient.js`: Builds the normalized processing payload and calls the mock processor or the future SAP HTTPS path.
+- `.env.example`: Names SAP-mode settings without real values; `.env` is gitignored.
+- `test/integration.test.js`: Built-in Node tests for API and integration-client behavior.
 - `orders.js`: Contains the five demo orders loaded into memory at startup.
 - `package.json`: Defines the Fastify and `@fastify/cors` dependencies and the start/dev scripts.
 - `package-lock.json`: Records exact dependency versions for repeatable installs.
@@ -148,7 +152,7 @@ Never add secrets, credentials, real SAP tenant URLs, company data, or personal 
 
 ### Decision versus status
 
-`decision` represents the result of the ProcureAI decision engine. Its allowed result values are exactly `APPROVED`, `MANUAL_REVIEW`, and `REJECTED`. A newly created order has `decision: null`, meaning it has not been evaluated yet. The five initial orders have hardcoded results; the engine is not implemented yet.
+`decision` represents the result of the ProcureAI decision engine. Its allowed result values are exactly `APPROVED`, `MANUAL_REVIEW`, and `REJECTED`. A newly created order has `decision: null`, meaning it has not been evaluated yet. The five initial orders retain their fixed demo results. New orders start unprocessed and can be evaluated with the mock or configured SAP processor through `/process`.
 
 `status` independently describes where the purchase order is in its lifecycle, for example `CREATED`, `CONFIRMED`, `SHIPPED`, `DELIVERED`, or `CANCELLED`. It does not describe a review outcome, and a decision does not automatically change the status in this API.
 
@@ -162,3 +166,42 @@ In the demo data, approved orders are confirmed, shipped, or delivered. `PO-1003
    The result PATCH route finds the order, validates both result fields, and updates only `amountEUR` and `decision` in that same array.
    The status PATCH route validates a lifecycle value, checks the decision and allowed transition, and updates only `status`.
 4. The handler returns a JavaScript object. Fastify converts it to JSON and sends it back to the client. If the order is missing, the handler sets HTTP 404 and returns a useful JSON error.
+
+
+## Processing through integrationClient
+
+Fastify routes call `integrationClient.processPurchaseOrder(order)`. The client sends this shape to the processing engine:
+
+```json
+{
+  "orderId": "PO-2001",
+  "supplier": { "name": "Demo Supplier", "country": "FR", "vatNumber": "FR-DEMO-001" },
+  "amount": 5000,
+  "currency": "USD"
+}
+```
+
+It expects `{ "orderId": "PO-2001", "amountEUR": 4436.95, "decision": "APPROVED", "reason": "Amount below automatic approval threshold" }`. The route saves `amountEUR` and `decision`, returns the reason, and leaves `status` unchanged. No-order requests return 404.
+
+The default `INTEGRATION_MODE=mock` uses fixed **synthetic local demo conversion rates**, not production FX data: EUR 1.0, USD 0.88739, GBP 1.17, and PLN 0.23. Results are rounded to two decimals. Amounts through 10,000 EUR are APPROVED; larger amounts are MANUAL_REVIEW. Mock mode does not call VIES or block on VAT.
+
+For the future SAP connection, copy `.env.example` to `.env` and set the values supplied by the tenant administrator:
+
+- `INTEGRATION_MODE=sap`
+- `INTEGRATION_SUITE_URL` — the HTTPS processing iFlow URL
+- `INTEGRATION_TOKEN_URL` — the HTTPS OAuth token URL
+- `INTEGRATION_CLIENT_ID`
+- `INTEGRATION_CLIENT_SECRET`
+
+`npm start` loads `.env` when it exists; Node ignores the file when absent. SAP mode requires all four connection/credential values, rejects non-HTTPS URLs, requests an OAuth client-credentials token with HTTP Basic authentication to the HTTPS token endpoint, then sends the normalized JSON payload with the bearer token. Missing settings return a clear HTTP 503; upstream, network, or response errors do not fall back to mock mode. No real SAP hostname, credential, or tenant URL is provided. Agree the iFlow schema before connecting it. Do not place a secret in Fiori.
+
+Local architecture:
+
+```text
+Fiori -> Fastify -> integrationClient -> MOCK processor today
+                                      -> SAP Integration Suite over HTTPS later
+```
+
+## Integration checks
+
+`npm test` runs the built-in Node test runner; no dependency was added. Nine tests cover EUR/USD order creation, server-owned fields, duplicate and invalid input, processing, threshold boundaries, unchanged lifecycle status, unknown-order 404, SAP-mode missing configuration, HTTPS/payload behavior, and existing health/list/detail routes. Fiori detail-route tests are in `../fiori/test/order-detail.test.cjs`.
