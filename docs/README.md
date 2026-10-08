@@ -1,5 +1,10 @@
-# Documentation
+# Project documentation
 
-This folder holds the project roadmap and will later contain architecture notes and setup guides.
+The [root README](../README.md) is the canonical overview of the implemented project, local setup, limitations, and roadmap. Component-specific details remain with each component:
 
-Start with the [roadmap](roadmap.md). Keep all documentation and examples limited to synthetic/demo data, without secrets or real SAP tenant URLs.
+- [Mock backend](../mock-backend/README.md): API behavior, validation, lifecycle rules, and integration modes.
+- [Fiori frontend](../fiori/README.md): routes, views, and local UI setup.
+- [Integration Suite status](../integration-suite/README.md): current scope and artifact availability.
+- [MCP server status](../mcp-server/README.md): reserved future scope.
+
+The [roadmap pointer](roadmap.md) links back to the roadmap in the root README so the project plan has a single source of truth.
