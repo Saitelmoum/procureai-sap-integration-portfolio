@@ -1,0 +1,19 @@
+{
+  "name": "procureai-ai-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive OpenAI client for the read-only ProcureAI MCP tools",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/cli.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "ajv": "^8.20.0",
+    "openai": "^7.32.0"
+  }
+}
