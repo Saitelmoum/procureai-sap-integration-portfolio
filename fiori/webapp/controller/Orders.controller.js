@@ -3,8 +3,10 @@ sap.ui.define([
   "sap/ui/model/Filter",
   "sap/ui/model/FilterOperator",
   "sap/ui/model/json/JSONModel",
-  "sap/m/MessageToast"
-], function (Controller, Filter, FilterOperator, JSONModel, MessageToast) {
+  "sap/m/MessageToast",
+  "procureai/model/AiGateway",
+  "procureai/model/CopilotMarkdown"
+], function (Controller, Filter, FilterOperator, JSONModel, MessageToast, AiGateway, CopilotMarkdown) {
   "use strict";
 
   return Controller.extend("procureai.controller.Orders", {
@@ -28,6 +30,14 @@ sap.ui.define([
         originalAmount: "",
         currency: "EUR"
       }), "createOrder");
+      this.getView().setModel(new JSONModel({
+        question: "",
+        submittedQuestion: "",
+        answer: "",
+        answerHtml: "",
+        error: "",
+        busy: false
+      }), "copilot");
       this.getOwnerComponent().getRouter().getRoute("orders")
         .attachPatternMatched(this.onRouteMatched, this);
     },
@@ -48,6 +58,49 @@ sap.ui.define([
     onRefresh: function () {
       this.byId("ordersTable").removeSelections(true);
       this.getOwnerComponent().loadOrders(true);
+    },
+
+    onOpenCopilot: function () {
+      this.byId("copilotDialog").open();
+    },
+
+    onCloseCopilot: function () {
+      this.byId("copilotDialog").close();
+    },
+
+    onSendCopilot: async function () {
+      const state = this.getView().getModel("copilot");
+      if (state.getProperty("/busy")) return;
+
+      const question = (state.getProperty("/question") || "").trim();
+      if (!question) {
+        state.setProperty("/error", "Enter a question before sending it.");
+        return;
+      }
+
+      state.setProperty("/busy", true);
+      state.setProperty("/error", "");
+      state.setProperty("/submittedQuestion", question);
+      state.setProperty("/answer", "");
+      state.setProperty("/answerHtml", "");
+      try {
+        const gatewayUrl = this.getOwnerComponent()
+          .getManifestEntry("/sap.ui5/config/aiGatewayUrl");
+        const answer = await AiGateway.ask(gatewayUrl, question);
+        state.setProperty("/answer", answer);
+        state.setProperty("/answerHtml", CopilotMarkdown.toSafeHtml(answer));
+        state.setProperty("/question", "");
+      } catch (error) {
+        const messages = {
+          AI_GATEWAY_NETWORK: "Could not reach the AI Gateway. Check that it is running, then try again.",
+          AI_GATEWAY_TIMEOUT: "The Copilot request timed out. Please try again.",
+          AI_GATEWAY_HTTP: "The AI Gateway could not process this request. Please try again.",
+          AI_GATEWAY_RESPONSE: "The AI Gateway returned an unexpected response. Please try again."
+        };
+        state.setProperty("/error", messages[error.code] || "The Copilot could not answer right now. Please try again.");
+      } finally {
+        state.setProperty("/busy", false);
+      }
     },
 
     onSearch: function (event) {

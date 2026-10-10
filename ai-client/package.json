@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node --env-file-if-exists=.env src/cli.js",
+    "start:gateway": "node --env-file-if-exists=.env src/gateway.js",
     "test": "node --test"
   },
   "dependencies": {

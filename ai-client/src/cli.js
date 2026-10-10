@@ -1,42 +1,15 @@
-import OpenAI from 'openai';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DEFAULT_MODEL, runAssistantTurn, createToolContext } from './assistant.js';
-import { connectToMcpServer, DEFAULT_API_BASE_URL } from './mcp-client.js';
-
-function requiredApiKey(env) {
-  if (!env.OPENAI_API_KEY?.trim()) {
-    throw new Error('OPENAI_API_KEY is missing. Add it to ai-client/.env before starting the chat.');
-  }
-  return env.OPENAI_API_KEY;
-}
+import { createAssistantRuntime } from './runtime.js';
 
 function userFacingOpenAiError() {
   return 'The OpenAI Responses API request failed. Check API access, model configuration, and network connectivity.';
 }
 
-export async function startChat({ env = process.env, openaiClient, connectMcp = connectToMcpServer } = {}) {
-  const apiKey = requiredApiKey(env);
-  const model = env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
-  const apiBaseUrl = env.PROCUREAI_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL;
-  const openai = openaiClient || new OpenAI({ apiKey });
-
-  let mcpConnection;
-  try {
-    mcpConnection = await connectMcp({ apiBaseUrl });
-  } catch {
-    throw new Error('MCP connection failed. Ensure the local MCP server and Fastify backend are available.');
-  }
-
-  let toolContext;
-  try {
-    toolContext = createToolContext(mcpConnection.tools);
-  } catch (error) {
-    await mcpConnection.client.close();
-    throw error;
-  }
+export async function startChat({ env = process.env, openaiClient, connectMcp, createRuntime = createAssistantRuntime } = {}) {
+  const runtime = await createRuntime({ env, openaiClient, connectMcp });
   const terminal = createInterface({ input: stdin, output: stdout });
   let previousResponseId;
 
@@ -48,14 +21,7 @@ export async function startChat({ env = process.env, openaiClient, connectMcp = 
       if (!question.trim()) continue;
 
       try {
-        const answer = await runAssistantTurn({
-          openai,
-          mcpClient: mcpConnection.client,
-          toolContext,
-          model,
-          question,
-          previousResponseId,
-        });
+        const answer = await runtime.ask(question, previousResponseId);
         previousResponseId = answer.responseId;
         console.log(`\nProcureAI> ${answer.text}`);
       } catch (error) {
@@ -67,7 +33,7 @@ export async function startChat({ env = process.env, openaiClient, connectMcp = 
     }
   } finally {
     terminal.close();
-    await mcpConnection.client.close();
+    await runtime.close();
   }
 }
 

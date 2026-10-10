@@ -18,6 +18,9 @@
     }
   },
   "sap.ui5": {
+    "config": {
+      "aiGatewayUrl": "http://127.0.0.1:3001"
+    },
     "dependencies": {
       "minUI5Version": "1.120.0",
       "libs": {

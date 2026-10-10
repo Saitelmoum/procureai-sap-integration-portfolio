@@ -72,6 +72,8 @@
               <ToolbarSpacer />
               <Button id="createOrderButton" text="Create Order" icon="sap-icon://add"
                 press=".onOpenCreateOrder" />
+              <Button id="copilotButton" text="AI Copilot" icon="sap-icon://discussion-2"
+                press=".onOpenCopilot" />
               <Button id="refreshButton" text="Refresh" icon="sap-icon://refresh"
                 press=".onRefresh" enabled="{= !${view>/busy} }" />
             </OverflowToolbar>
@@ -149,6 +151,56 @@
         </beginButton>
         <endButton>
           <Button text="Cancel" press=".onCancelCreateOrder" enabled="{= !${view>/createBusy} }" />
+        </endButton>
+      </Dialog>
+      <Dialog id="copilotDialog" title="ProcureAI Copilot" contentWidth="42rem"
+        stretchOnPhone="true" draggable="true" resizable="true">
+        <content>
+          <VBox class="sapUiResponsiveContentPadding">
+            <VBox visible="{= !${copilot>/submittedQuestion} &amp;&amp; !${copilot>/busy} }"
+              class="sapUiSmallMarginBottom">
+              <Title text="ProcureAI" level="H5" />
+              <Text text="Ask me anything about your purchase orders."
+                class="sapUiTinyMarginTop" />
+            </VBox>
+            <Panel visible="{= !!${copilot>/submittedQuestion} }"
+              backgroundDesign="Translucent" class="sapUiSmallMarginBottom">
+              <content>
+                <VBox>
+                  <Label text="You" class="sapUiTinyMarginBottom" />
+                  <Text text="{copilot>/submittedQuestion}" wrapping="true" renderWhitespace="true" />
+                </VBox>
+              </content>
+            </Panel>
+            <VBox visible="{= ${copilot>/busy} || !!${copilot>/answer} }"
+              class="sapUiSmallMarginBottom">
+              <Title text="ProcureAI" level="H5" class="sapUiTinyMarginBottom" />
+              <HBox alignItems="Center" visible="{copilot>/busy}">
+                <BusyIndicator size="1rem" />
+                <Text text="Thinking..." class="sapUiSmallMarginBegin" />
+              </HBox>
+              <FormattedText htmlText="{copilot>/answerHtml}"
+                visible="{= !!${copilot>/answer} }" />
+            </VBox>
+            <MessageStrip type="Error" showIcon="true" text="{copilot>/error}"
+              visible="{= !!${copilot>/error} }" class="sapUiSmallMarginBottom" />
+            <HBox alignItems="End" width="100%">
+              <TextArea id="copilotQuestion" value="{copilot>/question}"
+                placeholder="Ask about a purchase order..."
+                maxLength="2000" rows="2" growing="true" growingMaxLines="5"
+                enabled="{= !${copilot>/busy} }" width="100%">
+                <layoutData>
+                  <FlexItemData baseSize="0%" growFactor="1" shrinkFactor="1" />
+                </layoutData>
+              </TextArea>
+              <Button text="Send" type="Emphasized" press=".onSendCopilot"
+                enabled="{= !${copilot>/busy} }" class="sapUiTinyMarginBegin" />
+            </HBox>
+          </VBox>
+        </content>
+        <endButton>
+          <Button text="Close" type="Transparent" press=".onCloseCopilot"
+            enabled="{= !${copilot>/busy} }" />
         </endButton>
       </Dialog>
     </dependents>
